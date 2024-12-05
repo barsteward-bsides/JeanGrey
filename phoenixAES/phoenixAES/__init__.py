@@ -20,13 +20,22 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. #
 #########################################################################
 
-from enum import Enum
-
 # Internally we're using lists of uint8_t ints
 # Here are a few helpers to convert other representations
 
 blocksize=16
-FaultStatus = Enum('FaultStatus', 'Crash Loop NoFault MinorFault MajorFault WrongFault GoodEncFault GoodDecFault')
+# Enum Unsupported in uPython so use a class
+class FaultStatusClass():
+    Crash = 0
+    Loop = 1
+    NoFault = 2
+    MinorFault = 3
+    MajorFault = 4
+    WrongFault = 5
+    GoodEncFault = 6
+    GoodDecFault = 7
+
+FaultStatus = FaultStatusClass()
 
 def int2bytes(state):
     return (state).to_bytes(blocksize, byteorder='big', signed=False)
@@ -357,6 +366,7 @@ def check(output, encrypt=None, verbose=1, init=False, _intern={}):
     :param init: if True, resets the internal reference as the given output
     :returns: a FaultStatus
     """
+    global FaultStatus
     if init:
         _intern.clear()
 
@@ -518,7 +528,8 @@ def _absorb(index, o, candidates, goldenrefbytes, encrypt, verbose):
 
 def _get_cands(Diff, Keys, Gold, tmult, encrypt, verbose):
     candi = [_get_compat(di, ti, encrypt) for di,ti in zip(Diff, tmult)]
-    z = set(candi[0]).intersection(*candi[1:])
+    # Avoid use of intersection which was not working in uPython
+    z = set(candi[0]) & set(candi[1]) & set(candi[2]) & set(candi[3])
     candi = [[t for t in enumerate(ci) if t[1] in z] for ci in candi]
     cands = [[set([j for j,x in ci if x==zi]) for ci in candi] for zi in z]
     if verbose > 2:
